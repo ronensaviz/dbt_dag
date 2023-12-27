@@ -15,23 +15,28 @@ default_args = {
 
 # Define the DAG
 dag = DAG(
-    'ssh_ls_command',
+    'docker_dbt_workflow',
     default_args=default_args,
-    description='A simple DAG to run ssh ls command',
+    description='A DAG to build and run a Docker container for DBT',
     schedule_interval=timedelta(days=1),
 )
 
-# Define the Bash command
-#ssh_command = 'ssh -i /opt/airflow/ssh_key omid@34.122.66.108 "ls -la"'
-ssh_command = 'ssh -o StrictHostKeyChecking=no -i /opt/airflow/ssh_key omid@34.122.66.108 "ls -la"'
-#ssh_command = 'ssh -o StrictHostKeyChecking=no -i /opt/airflow/marketing/marketing omid@34.122.66.108 "ls -la"'
-#ssh_command = 'ssh -vvv -i /opt/airflow/marketing omid@34.122.66.108 "ls -la"'
+# Define the SSH and Docker commands
+ssh_command = """
+ssh -o StrictHostKeyChecking=no -i /opt/airflow/ssh_key omid@34.122.66.108 << EOF
+cd /home/omid/google_analytics_4
+docker build -t my-dbt-image .
+docker rm -f my-dbt-container || true
+docker run --name my-dbt-container my-dbt-image
+EOF
+"""
+
 # Define the task
-run_ssh_command = BashOperator(
-    task_id='run_ssh_ls',
+docker_dbt_task = BashOperator(
+    task_id='docker_dbt_workflow_task',
     bash_command=ssh_command,
     dag=dag,
 )
 
 # Set the task in the DAG
-run_ssh_command
+docker_dbt_task
